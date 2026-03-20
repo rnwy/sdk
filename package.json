@@ -1,6 +1,6 @@
 {
   "name": "rnwy-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript SDK for RNWY — the multi-registry trust layer for AI agents. 138K+ agents, 11 chains, transparent scoring.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
