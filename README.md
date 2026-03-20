@@ -1,6 +1,6 @@
-# rnwy
+# rnwy-sdk
 
-[![npm version](https://img.shields.io/npm/v/rnwy.svg)](https://www.npmjs.com/package/rnwy)
+[![npm version](https://img.shields.io/npm/v/rnwy-sdk.svg)](https://www.npmjs.com/package/rnwy-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 TypeScript SDK for [RNWY](https://rnwy.com) — the multi-registry trust layer for AI agents.
@@ -10,13 +10,13 @@ TypeScript SDK for [RNWY](https://rnwy.com) — the multi-registry trust layer f
 ## Install
 
 ```bash
-npm install rnwy
+npm install rnwy-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { RNWYClient } from 'rnwy'
+import { RNWYClient } from 'rnwy-sdk'
 
 const rnwy = new RNWYClient()
 
@@ -144,7 +144,7 @@ Common mistakes caught automatically:
 ## Error Handling
 
 ```typescript
-import { RNWYNotFoundError, RNWYValidationError, RNWYNetworkError } from 'rnwy'
+import { RNWYNotFoundError, RNWYValidationError, RNWYNetworkError } from 'rnwy-sdk'
 
 try {
   const data = await rnwy.getAgent('base', 999999)
@@ -173,7 +173,7 @@ import type {
   Badge,
   ChainSlug,
   Registry,
-} from 'rnwy'
+} from 'rnwy-sdk'
 ```
 
 ## On-Chain Oracle
