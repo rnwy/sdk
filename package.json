@@ -1,0 +1,56 @@
+{
+  "name": "rnwy",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for RNWY — the multi-registry trust layer for AI agents. 138K+ agents, 11 chains, transparent scoring.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  },
+  "keywords": [
+    "rnwy",
+    "ai-agents",
+    "trust",
+    "erc-8004",
+    "sybil-detection",
+    "blockchain",
+    "web3",
+    "ai-identity",
+    "agent-trust",
+    "olas",
+    "virtuals",
+    "attestation"
+  ],
+  "author": "RNWY <hello@rnwy.com> (https://rnwy.com)",
+  "license": "MIT",
+  "homepage": "https://rnwy.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rnwy/sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rnwy/sdk/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
