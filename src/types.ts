@@ -1,5 +1,5 @@
 // RNWY SDK — TypeScript Types
-// Derived from live API responses on March 20, 2026
+// Derived from live API responses on March 22, 2026
 
 // ─── Chain & Registry ───────────────────────────────────────────────
 
@@ -93,6 +93,14 @@ export interface ScoreBreakdownBonus {
   reason: string
 }
 
+export interface ScoreBreakdownCap {
+  applied: boolean
+  original_score: number
+  capped_score: number
+  reason: string
+  missing_signals: string[]
+}
+
 export interface ScoreBreakdown {
   base: number
   inputs: {
@@ -109,12 +117,13 @@ export interface ScoreBreakdown {
   }
   bonuses: Record<string, ScoreBreakdownBonus>
   penalties: Record<string, ScoreBreakdownBonus>
+  cap?: ScoreBreakdownCap
   computed_at: string
-  /** Current formula version. As of March 2026: "2.3" */
+  /** Current formula version. As of March 2026: "2.4" */
   formula_version: string
 }
 
-/** Known badge IDs as of v2.3 */
+/** Known badge IDs as of v2.4 */
 export type BadgeId =
   | 'verified_reviews'
   | 'high_volume'
@@ -127,6 +136,7 @@ export type BadgeId =
   | 'transferred'
   | 'sybil_heavy'
   | 'sybil_elevated'
+  | 'incomplete_data'
 
 export interface Badge {
   id: BadgeId | string
@@ -441,7 +451,7 @@ export interface RiskTermsResponse {
   auth?: { status: string; limit: string }
 }
 
-// ─── SDK Options 
+// ─── SDK Options ────────────────────────────────────────────────────
 
 export interface RNWYClientOptions {
   /** Base URL override. Default: https://rnwy.com */
