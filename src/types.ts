@@ -376,7 +376,72 @@ export interface ReviewerAnalysisResponse {
   reviewers: ReviewerWallet[]
 }
 
-// ─── SDK Options ────────────────────────────────────────────────────
+// ─── Risk Terms ─────────────────────────────────────────────────────
+
+export interface RiskTier {
+  level: number
+  label: 'low' | 'moderate' | 'elevated' | 'high' | 'severe' | 'critical'
+  description: string
+  computed: boolean
+}
+
+export interface RiskSignals {
+  trust_score: number | null
+  score_available: boolean
+  sybil_severity: string | null
+  address_age_days: number | null
+  is_original_owner: boolean
+  review_count: number
+  reviewer_credibility: 'high' | 'medium' | 'low' | null
+}
+
+export interface RiskDataCoverage {
+  address_age: boolean
+  sybil_analysis: boolean
+  reviewer_credibility: boolean
+  signals_available: number
+  signals_total: number
+}
+
+export interface RiskDeclineReason {
+  signal: string
+  value: string
+  reason: string
+}
+
+export interface RiskMethodology {
+  version: string
+  url: string
+  description: string
+}
+
+export interface RiskDisclaimer {
+  status: string
+  text: string
+  data_limitations: string
+  tos_url: string
+}
+
+export interface RiskTermsResponse {
+  recommendation: 'terms' | 'decline' | 'insufficient_data'
+  agent_id: number
+  agent_name: string | null
+  chain: string
+  chain_id: number
+  registry: string
+  explorer_url: string
+  risk_tier: RiskTier
+  signals: RiskSignals
+  data_coverage: RiskDataCoverage
+  decline_reasons?: RiskDeclineReason[]
+  methodology: RiskMethodology
+  disclaimer: RiskDisclaimer
+  warning: string | null
+  timestamp: string
+  auth?: { status: string; limit: string }
+}
+
+// ─── SDK Options 
 
 export interface RNWYClientOptions {
   /** Base URL override. Default: https://rnwy.com */
