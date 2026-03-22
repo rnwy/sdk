@@ -1,56 +1,479 @@
-{
-  "name": "rnwy-sdk",
-  "version": "0.1.1",
-  "description": "TypeScript SDK for RNWY — the multi-registry trust layer for AI agents. 138K+ agents, 11 chains, transparent scoring.",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  'https://zgzjdlheaofmmaxbvrzh.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnempkbGhlYW9mbW1heGJ2cnpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MTk5ODYsImV4cCI6MjA4MjI5NTk4Nn0.vSgGz5eHazYgVD94LeneBXwsVAn7agM6aT6Ohw0FhkI',
+  { global: { fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }) } }
+)
+
+const TOOLS = [
+  {
+    name: 'trust_check',
+    description: 'Pass/fail trust verdict for any AI agent across ERC-8004, Olas, or Virtuals registries. Returns score, tier, badges, and reasoning.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Agent ID (token ID or Mech ID)' },
+        chain: { type: 'string', description: 'Chain slug: ethereum, base, bnb, gnosis, avalanche, celo, arbitrum, polygon, monad, megaeth, optimism' },
+        registry: { type: 'string', description: 'Registry: erc8004 (default), olas, virtuals' },
+        threshold: { type: 'number', description: 'Pass/fail threshold (default 50)' },
+      },
+      required: ['id', 'chain'],
+    },
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
-    "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+  {
+    name: 'reviewer_analysis',
+    description: 'Analyze wallet ages of every reviewer who left feedback on an agent. Detects sybil patterns like same-day wallet creation clusters.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Agent ID' },
+        chain: { type: 'string', description: 'Chain slug' },
+      },
+      required: ['id', 'chain'],
+    },
   },
-  "devDependencies": {
-    "tsup": "^8.0.0",
-    "typescript": "^5.4.0"
+  {
+    name: 'compare_agents',
+    description: 'Side-by-side trust comparison of 2-10 agents, ranked by score with reviewer quality summary for each.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        agents: { type: 'string', description: 'Comma-separated chain:id pairs. Example: base:1380,base:16907' },
+        threshold: { type: 'number', description: 'Pass/fail threshold (default 50)' },
+      },
+      required: ['agents'],
+    },
   },
-  "keywords": [
-    "rnwy",
-    "ai-agents",
-    "trust",
-    "erc-8004",
-    "sybil-detection",
-    "blockchain",
-    "web3",
-    "ai-identity",
-    "agent-trust",
-    "olas",
-    "virtuals",
-    "attestation"
-  ],
-  "author": "RNWY <hello@rnwy.com> (https://rnwy.com)",
-  "license": "MIT",
-  "homepage": "https://rnwy.com",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/rnwy/sdk.git"
+  {
+    name: 'address_age',
+    description: 'Look up wallet age in days for any address. The uncheatable signal; time cannot be faked.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        address: { type: 'string', description: 'Wallet address (0x...)' },
+        chain: { type: 'string', description: 'Chain slug (optional, defaults to base)' },
+      },
+      required: ['address'],
+    },
   },
-  "bugs": {
-    "url": "https://github.com/rnwy/sdk/issues"
+  {
+    name: 'network_stats',
+    description: 'Network-wide statistics; total agents by registry, chain distribution, commerce job counts, and trust score tier distribution across 100,000+ indexed agents.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
   },
-  "engines": {
-    "node": ">=18"
+  {
+    name: 'reviewer_wallet',
+    description: 'Behavior profile for any reviewer wallet; velocity, sweep patterns, score clustering, and sybil signals across the entire ERC-8004 ecosystem. Shows how this wallet behaves when reviewing agents.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        address: { type: 'string', description: 'Wallet address (0x...)' },
+        chain: { type: 'string', description: 'Chain slug: base, ethereum, bnb, etc.' },
+        summary: { type: 'boolean', description: 'If true, omits individual review list (default true)' },
+      },
+      required: ['address', 'chain'],
+    },
+  },
+  {
+    name: 'commerce_stats',
+    description: 'Commerce activity for an agent or address; job count, unique counterparties, repeat client rate, total earnings. Covers Olas Mechs and Virtuals ACP protocols.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        address: { type: 'string', description: 'Wallet or contract address (0x...). Use this for Virtuals ACP lookups.' },
+        id: { type: 'string', description: 'Agent ID. Use with chain and registry for linked agent commerce data.' },
+        chain: { type: 'string', description: 'Chain slug (required with id)' },
+        registry: { type: 'string', description: 'Registry: erc8004, olas (default erc8004)' },
+      },
+    },
+  },
+  {
+    name: 'risk_terms',
+    description: 'Counterparty risk intelligence for any agent. Returns risk tier (low/moderate/elevated/high/severe/critical), raw trust signals, data coverage, and methodology reference. Designed for marketplace operators and escrow providers setting transaction parameters before a deal. Full methodology: https://rnwy.com/risk-intelligence',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        agent_id: { type: 'number', description: 'Agent ID (integer)' },
+        chain: { type: 'string', description: 'Chain slug: base, ethereum, bnb, gnosis, avalanche, celo, arbitrum, polygon, monad, megaeth, optimism' },
+        registry: { type: 'string', description: 'Registry: erc8004 (default), olas' },
+      },
+      required: ['agent_id', 'chain'],
+    },
+  },
+]
+
+const SERVER_INFO = {
+  name: 'rnwy',
+  version: '0.4.0',
+  description: 'RNWY; trust intelligence for AI agents. Multi-registry (ERC-8004, Olas, Virtuals), sybil detection, reviewer analysis, transaction risk intelligence, commerce data, and transparent scoring across 10 chains and 100,000+ agents. Free, no API key.',
+  homepage: 'https://rnwy.com',
+}
+
+function jsonRpcResponse(id: any, result: any) {
+  return { jsonrpc: '2.0', id, result }
+}
+
+function jsonRpcError(id: any, code: number, message: string) {
+  return { jsonrpc: '2.0', id, error: { code, message } }
+}
+
+async function callInternal(baseUrl: string, path: string, params: Record<string, string>): Promise<any> {
+  const url = new URL(path, baseUrl)
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) url.searchParams.set(k, String(v))
   }
+  const res = await fetch(url.toString(), { cache: 'no-store' })
+  return res.json()
+}
+
+async function callInternalPost(baseUrl: string, path: string, body: Record<string, unknown>): Promise<any> {
+  const url = new URL(path, baseUrl)
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+  return res.json()
+}
+
+// ═══════════════════════════════════════
+// CHAIN HELPERS
+// ═══════════════════════════════════════
+
+const CHAIN_IDS: Record<string, number> = {
+  ethereum: 1, base: 8453, bnb: 56, monad: 143, megaeth: 4326,
+  gnosis: 100, celo: 42220, arbitrum: 42161, avalanche: 43114,
+  polygon: 137, optimism: 10,
+}
+
+function chainIdToName(chainId: number): string {
+  return Object.entries(CHAIN_IDS).find(([, id]) => id === chainId)?.[0] || 'unknown'
+}
+
+// ═══════════════════════════════════════
+// TOOL HANDLERS
+// ═══════════════════════════════════════
+
+async function handleNetworkStats(): Promise<any> {
+  const [registryRes, tierRes, commerceRes, statsRes] = await Promise.all([
+(async () => {
+      const results: Record<string, number> = {}
+      for (const reg of ['erc8004', 'olas']) {
+        const { count } = await supabase.from('computed_agents').select('agent_id', { count: 'exact', head: true }).eq('registry', reg)
+        results[reg] = count || 0
+      }
+      return Object.entries(results).map(([registry, count]) => ({ registry, count }))
+    })(),
+    // Trust score tier distribution
+    supabase.from('computed_agents').select('overall_score').not('overall_score', 'is', null),
+    // Commerce totals
+    Promise.all([
+      supabase.from('commerce_jobs').select('job_id', { count: 'exact', head: true }).eq('protocol', 'olas'),
+      supabase.from('commerce_jobs').select('job_id', { count: 'exact', head: true }).eq('protocol', 'virtuals'),
+    ]),
+    // Global stats
+    supabase.from('computed_stats').select('*').eq('id', 'global').limit(1),
+  ])
+
+  // Compute tiers from scores
+  const tiers = { established: 0, developing: 0, limited: 0, flagged: 0, unscored: 0 }
+  if (tierRes.data) {
+    for (const row of tierRes.data) {
+      const s = row.overall_score
+      if (s == null) tiers.unscored++
+      else if (s >= 75) tiers.established++
+      else if (s >= 51) tiers.developing++
+      else if (s >= 30) tiers.limited++
+      else tiers.flagged++
+    }
+  }
+
+  const [olasJobs, virtualsJobs] = commerceRes
+  const globalStats = statsRes.data?.[0]
+
+  // Chain distribution
+  const chainCounts: Record<string, number> = {}
+  if (tierRes.data) {
+    // Use a separate query for chain distribution
+    const { data: chainRows } = await supabase.from('computed_agents').select('chain_id')
+    if (chainRows) {
+      for (const row of chainRows) {
+        const name = chainIdToName(row.chain_id)
+        chainCounts[name] = (chainCounts[name] || 0) + 1
+      }
+    }
+  }
+
+  return {
+    totalAgents: globalStats?.total_agents || Object.values(chainCounts).reduce((a, b) => a + b, 0),
+    registries: registryRes,
+    chains: chainCounts,
+    tiers,
+    commerce: {
+      olasJobs: olasJobs.count || 0,
+      virtualsJobs: virtualsJobs.count || 0,
+      totalJobs: (olasJobs.count || 0) + (virtualsJobs.count || 0),
+    },
+    averageAgeDays: globalStats?.average_age_days || null,
+    originalOwnerPercentage: globalStats?.original_owner_percentage || null,
+  }
+}
+
+async function handleCommerceStats(args: any): Promise<any> {
+  // Address-based lookup (Virtuals ACP or any address)
+  if (args.address) {
+    const addr = args.address.toLowerCase()
+    const { data: addressStats } = await supabase
+      .from('commerce_address_stats')
+      .select('*')
+      .eq('address', addr)
+
+    if (!addressStats || addressStats.length === 0) {
+      return { found: false, address: addr, message: 'No commerce activity found for this address.' }
+    }
+
+    // Check for linked agent
+    const { data: linked } = await supabase
+      .from('linked_addresses')
+      .select('agent_id, chain_id, registry, protocol')
+      .eq('external_address', addr)
+      .limit(1)
+
+    let linkedAgent = null
+    if (linked?.[0]) {
+      const { data: agentRow } = await supabase
+        .from('computed_agents')
+        .select('name, overall_score')
+        .eq('agent_id', parseInt(linked[0].agent_id))
+        .eq('chain_id', linked[0].chain_id)
+        .limit(1)
+      linkedAgent = {
+        id: linked[0].agent_id,
+        chain: chainIdToName(linked[0].chain_id),
+        registry: linked[0].registry,
+        name: agentRow?.[0]?.name || null,
+        trustScore: agentRow?.[0]?.overall_score || null,
+      }
+    }
+
+    return {
+      found: true,
+      address: addr,
+      linkedAgent,
+      protocols: addressStats.map((row: any) => ({
+        protocol: row.protocol,
+        chain: chainIdToName(row.chain_id),
+        jobsAsProvider: row.total_jobs_as_provider || 0,
+        jobsAsClient: row.total_jobs_as_client || 0,
+        jobsAsEvaluator: row.total_jobs_as_evaluator || 0,
+      })),
+    }
+  }
+
+  // Agent-based lookup (requires id + chain)
+  if (args.id && args.chain) {
+    const chainId = CHAIN_IDS[args.chain]
+    if (!chainId) return { error: `Unknown chain: ${args.chain}` }
+    const registry = args.registry || 'erc8004'
+
+    const { data: agentStats } = await supabase
+      .from('commerce_agent_stats')
+      .select('*')
+      .eq('agent_id', String(args.id))
+      .eq('chain_id', chainId)
+      .eq('registry', registry)
+
+    if (!agentStats || agentStats.length === 0) {
+      return { found: false, agentId: args.id, chain: args.chain, registry, message: 'No commerce activity linked to this agent.' }
+    }
+
+    return {
+      found: true,
+      agentId: args.id,
+      chain: args.chain,
+      registry,
+      protocols: agentStats.map((row: any) => ({
+        protocol: row.protocol,
+        totalJobs: row.total_jobs || 0,
+        uniqueCounterparties: row.unique_counterparties || 0,
+        repeatClientPct: row.repeat_client_pct || 0,
+        paymentTotal: row.payment_total || '0',
+        firstJob: row.first_job_at,
+        lastJob: row.last_job_at,
+        circularJobFlag: row.circular_job_flag || false,
+      })),
+    }
+  }
+
+  return { error: 'Provide either address or (id + chain). See tool description.' }
+}
+
+async function handleToolCall(baseUrl: string, toolName: string, args: any): Promise<any> {
+  switch (toolName) {
+    case 'trust_check': {
+      const params: Record<string, string> = { id: args.id, chain: args.chain }
+      if (args.threshold) params.threshold = String(args.threshold)
+      if (args.registry) params.registry = args.registry
+      return callInternal(baseUrl, '/api/trust-check', params)
+    }
+    case 'reviewer_analysis': {
+      return callInternal(baseUrl, '/api/reviewer-analysis', { id: args.id, chain: args.chain })
+    }
+    case 'compare_agents': {
+      const params: Record<string, string> = { agents: args.agents }
+      if (args.threshold) params.threshold = String(args.threshold)
+      return callInternal(baseUrl, '/api/compare', params)
+    }
+    case 'address_age': {
+      const params: Record<string, string> = { address: args.address }
+      if (args.chain) params.chain = args.chain
+      return callInternal(baseUrl, '/api/address-ages', params)
+    }
+    case 'network_stats': {
+      return handleNetworkStats()
+    }
+    case 'commerce_stats': {
+      return handleCommerceStats(args)
+    }
+    case 'reviewer_wallet': {
+      const params: Record<string, string> = { address: args.address, chain: args.chain }
+      params.summary = args.summary === false ? 'false' : 'true'
+      return callInternal(baseUrl, '/api/reviewer', params)
+    }
+    case 'risk_terms': {
+      const body: Record<string, unknown> = {
+        agent_id: args.agent_id,
+        chain: args.chain,
+      }
+      if (args.registry) body.registry = args.registry
+      return callInternalPost(baseUrl, '/api/risk-terms', body)
+    }
+    default:
+      throw new Error(`Unknown tool: ${toolName}`)
+  }
+}
+
+export async function POST(request: NextRequest) {
+  let body: any
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json(
+      jsonRpcError(null, -32700, 'Parse error'),
+      { status: 400 }
+    )
+  }
+
+  const { jsonrpc, id, method, params } = body
+
+  if (jsonrpc !== '2.0') {
+    return NextResponse.json(
+      jsonRpcError(id, -32600, 'Invalid Request: jsonrpc must be "2.0"'),
+      { status: 400 }
+    )
+  }
+
+  const baseUrl = new URL(request.url).origin
+
+  switch (method) {
+    case 'initialize': {
+      return NextResponse.json(jsonRpcResponse(id, {
+        protocolVersion: '2024-11-05',
+        serverInfo: SERVER_INFO,
+        capabilities: {
+          tools: { listChanged: false },
+        },
+      }))
+    }
+
+    case 'notifications/initialized': {
+      return NextResponse.json(jsonRpcResponse(id, {}))
+    }
+
+    case 'tools/list': {
+      return NextResponse.json(jsonRpcResponse(id, { tools: TOOLS }))
+    }
+
+    case 'tools/call': {
+      const toolName = params?.name
+      const toolArgs = params?.arguments || {}
+
+      if (!toolName) {
+        return NextResponse.json(
+          jsonRpcError(id, -32602, 'Invalid params: tool name required'),
+          { status: 400 }
+        )
+      }
+
+      const tool = TOOLS.find(t => t.name === toolName)
+      if (!tool) {
+        return NextResponse.json(
+          jsonRpcError(id, -32602, `Unknown tool: ${toolName}. Available: ${TOOLS.map(t => t.name).join(', ')}`),
+          { status: 400 }
+        )
+      }
+
+      try {
+        const result = await handleToolCall(baseUrl, toolName, toolArgs)
+        return NextResponse.json(jsonRpcResponse(id, {
+          content: [
+            { type: 'text', text: JSON.stringify(result, null, 2) },
+          ],
+        }))
+      } catch (err: any) {
+        return NextResponse.json(
+          jsonRpcError(id, -32000, err.message || 'Tool execution failed'),
+          { status: 500 }
+        )
+      }
+    }
+
+    default: {
+      return NextResponse.json(
+        jsonRpcError(id, -32601, `Method not found: ${method}. Available: initialize, tools/list, tools/call`),
+        { status: 400 }
+      )
+    }
+  }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    name: SERVER_INFO.name,
+    version: SERVER_INFO.version,
+    description: SERVER_INFO.description,
+    homepage: SERVER_INFO.homepage,
+    protocol: 'MCP (Model Context Protocol)',
+    transport: 'Streamable HTTP',
+    endpoint: 'POST /api/mcp',
+    tools: TOOLS.map(t => ({ name: t.name, description: t.description })),
+    usage: {
+      initialize: {
+        method: 'POST',
+        body: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+      },
+      list_tools: {
+        method: 'POST',
+        body: { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} },
+      },
+      call_tool: {
+        method: 'POST',
+        body: {
+          jsonrpc: '2.0',
+          id: 3,
+          method: 'tools/call',
+          params: {
+            name: 'trust_check',
+            arguments: { id: '16907', chain: 'base' },
+          },
+        },
+      },
+    },
+  })
 }
