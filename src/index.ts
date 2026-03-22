@@ -12,6 +12,7 @@ import type {
   TrustCheckResponse,
   ReviewerProfileResponse,
   ReviewerAnalysisResponse,
+  RiskTermsResponse,
 } from './types'
 
 import { RNWYError, RNWYNotFoundError, RNWYNetworkError, RNWYValidationError } from './errors'
@@ -101,6 +102,49 @@ export class RNWYClient {
       return JSON.parse(body) as T
     } catch {
       throw new RNWYError(`Failed to parse API response as JSON`)
+    }
+  }
+
+  private async requestPost<T>(
+    path: string,
+    body: Record<string, unknown>,
+    headers?: Record<string, string>,
+  ): Promise<T> {
+    const url = new URL(path, this.baseUrl)
+
+    const requestHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...headers,
+    }
+
+    let response: Response
+    try {
+      response = await this.fetchFn(url.toString(), {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify(body),
+      })
+    } catch (err) {
+      throw new RNWYNetworkError(0, `Network request failed: ${(err as Error).message}`)
+    }
+
+    const text = await response.text()
+
+    if (response.status === 404) {
+      throw new RNWYNotFoundError(
+        String(body.agent_id ?? 'unknown'),
+        String(body.chain ?? 'unknown'),
+      )
+    }
+
+    if (!response.ok) {
+      throw new RNWYNetworkError(response.status, text)
+    }
+
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      throw new RNWYError('Failed to parse API response as JSON')
     }
   }
 
@@ -253,6 +297,60 @@ export class RNWYClient {
       id: String(agentId),
       chain: validChain,
     })
+  }
+
+  /**
+   * Get counterparty risk intelligence for an agent.
+   * Returns risk tier, raw trust signals, data coverage, and methodology reference.
+   * Designed for marketplace operators and escrow providers setting transaction parameters.
+   *
+   * Unauthenticated: 5/min. With API key: 60/min.
+   *
+   * Full methodology with interactive calculator: https://rnwy.com/risk-intelligence
+   *
+   * @example
+   * const risk = await rnwy.getRiskTerms('base', 16907)
+   * console.log(risk.recommendation)                    // "terms"
+   * console.log(risk.risk_tier.label)                   // "elevated"
+   * console.log(risk.signals.trust_score)               // 54
+   * console.log(risk.data_coverage.signals_available)   // 6
+   *
+   * @example
+   * // With API key for higher rate limit
+   * const risk = await rnwy.getRiskTerms('base', 16907, { apiKey: 'your-key' })
+   *
+   * @example
+   * // Decline response (heavy sybil indicators)
+   * const risk = await rnwy.getRiskTerms('base', 1380)
+   * console.log(risk.recommendation)    // "decline"
+   * console.log(risk.decline_reasons)   // [{ signal: "sybil_severity", ... }]
+   *
+   * @example
+   * // Incomplete data coverage
+   * const risk = await rnwy.getRiskTerms('monad', 182)
+   * console.log(risk.data_coverage.signals_available)   // 3
+   * console.log(risk.warning)  // "Trust score computed from incomplete data..."
+   */
+  async getRiskTerms(
+    chain: string,
+    agentId: number | string,
+    options: { registry?: string; apiKey?: string } = {},
+  ): Promise<RiskTermsResponse> {
+    const validChain = this.validateChain(chain)
+    const registry = options.registry ? this.validateRegistry(options.registry) : undefined
+
+    const body: Record<string, unknown> = {
+      agent_id: typeof agentId === 'string' ? parseInt(agentId, 10) : agentId,
+      chain: validChain,
+    }
+    if (registry) body.registry = registry
+
+    const headers: Record<string, string> = {}
+    if (options.apiKey) {
+      headers['Authorization'] = `Bearer ${options.apiKey}`
+    }
+
+    return this.requestPost<RiskTermsResponse>('/api/risk-terms', body, headers)
   }
 }
 
