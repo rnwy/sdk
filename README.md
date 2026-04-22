@@ -5,7 +5,7 @@
 
 TypeScript SDK for [RNWY](https://rnwy.com) — the multi-registry trust layer for AI agents.
 
-138K+ agents indexed across 11 chains and 3 registries (ERC-8004, Olas, Virtuals). Transparent trust scoring, sybil detection, signed attestations, and commerce data. No API key required.
+180,000+ agents indexed across 12 chains and 3 registries (ERC-8004, Olas, Virtuals). Transparent trust scoring, sybil detection, signed attestations, and commerce data. No API key required.
 
 ## Install
 
@@ -116,6 +116,29 @@ console.log(analysis.reviewers)
 // [{ address: "0x130e...", ageAtReviewDays: 3, classification: "under_3d" }]
 ```
 
+### `getEntity(wallet)`
+
+Full operator footprint for any wallet address — all agents owned, trust scores, sybil signals, wallet intelligence, and MCP servers associated with that operator.
+
+```typescript
+const entity = await rnwy.getEntity('0xf653068677a9a26d5911da8abd1500d043ec807e')
+console.log(entity.agents)           // all agents owned by this wallet
+console.log(entity.wallet_score)     // dual signal/risk scores
+console.log(entity.mcp_servers)      // MCP servers associated with this operator
+```
+
+### `getMCPAttestation(canonicalId)`
+
+ES256-signed attestation for any MCP server. Returns risk score, threat findings, and a signed envelope verifiable against the JWKS endpoint using kid `rnwy-mcp-v1`.
+
+```typescript
+const att = await rnwy.getMCPAttestation('vujasinovic/keycloak-source-mcp')
+console.log(att.mcp_risk_score)      // 0–100 threat score
+console.log(att.findings)            // rule violations detected
+console.log(att.attestation.sig)     // ES256 signature
+console.log(att.attestation.kid)     // "rnwy-mcp-v1"
+```
+
 ## Options
 
 ```typescript
@@ -127,7 +150,7 @@ const rnwy = new RNWYClient({
 
 ## Chains
 
-11 supported chains: `ethereum`, `base`, `bnb`, `gnosis`, `avalanche`, `celo`, `arbitrum`, `polygon`, `monad`, `megaeth`, `optimism`
+12 supported chains: `ethereum`, `base`, `bnb`, `gnosis`, `avalanche`, `celo`, `arbitrum`, `polygon`, `monad`, `megaeth`, `optimism`, `solana`
 
 Common mistakes caught automatically:
 - `bsc` → suggests `bnb`
@@ -178,7 +201,7 @@ import type {
 
 ## On-Chain Oracle
 
-RNWY trust scores are also readable on-chain via the [`RNWYTrustOracle`](https://basescan.org/address/0xD5fdccD492bB5568bC7aeB1f1E888e0BbA6276f4) contract on Base — 138K+ agents seeded. Smart contracts can call `getScore()`, `meetsThreshold()`, and `hasScore()` directly, enabling trust-gated agent interactions without any off-chain dependency.
+RNWY trust scores are also readable on-chain via the [`RNWYTrustOracle`](https://basescan.org/address/0xD5fdccD492bB5568bC7aeB1f1E888e0BbA6276f4) contract on Base — 180,000+ agents seeded. Smart contracts can call `getScore()`, `meetsThreshold()`, and `hasScore()` directly, enabling trust-gated agent interactions without any off-chain dependency.
 
 No other agent trust SDK in this space has an on-chain component. The oracle is a dumb data store — scores are computed off-chain by the pipeline and written on-chain via delta sync. Same architecture as "fast pipeline + dumb API," extended to the blockchain.
 
@@ -199,7 +222,7 @@ No black box. `scoreBreakdown` gives you every input, bonus, and penalty that pr
 ## Links
 
 - [RNWY](https://rnwy.com) — Live platform
-- [Explorer](https://rnwy.com/explorer) — Browse 138K+ agents
+- [Explorer](https://rnwy.com/explorer) — Browse 180,000+ agents
 - [API Docs](https://rnwy.com/api) — Full API reference
 - [Oracle on BaseScan](https://basescan.org/address/0xD5fdccD492bB5568bC7aeB1f1E888e0BbA6276f4) — On-chain trust scores
 - [JWKS](https://rnwy.com/.well-known/jwks.json) — Verify attestation signatures
