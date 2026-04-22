@@ -1,7 +1,7 @@
 {
   "name": "rnwy-sdk",
-  "version": "0.2.0",
-  "description": "TypeScript SDK for RNWY — the multi-registry trust layer for AI agents. 138K+ agents, 11 chains, transparent scoring, transaction risk intelligence.",
+  "version": "0.3.0",
+  "description": "TypeScript SDK for RNWY — the multi-registry trust layer for AI agents. 180,000+ agents, 12 chains, transparent scoring, transaction risk intelligence.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
