@@ -1,5 +1,5 @@
 // RNWY SDK — Main Client
-// The intelligence layer for AI agents. 138K+ agents, 3 registries, 11 chains.
+// The intelligence layer for AI agents. 180,000+ agents, 3 registries, 12 chains.
 // https://rnwy.com
 
 import type {
@@ -19,7 +19,7 @@ import { RNWYError, RNWYNotFoundError, RNWYNetworkError, RNWYValidationError } f
 
 const VALID_CHAINS: Set<string> = new Set([
   'ethereum', 'base', 'bnb', 'gnosis', 'avalanche',
-  'celo', 'arbitrum', 'polygon', 'monad', 'megaeth', 'optimism',
+  'celo', 'arbitrum', 'polygon', 'monad', 'megaeth', 'optimism', 'solana',
 ])
 
 const VALID_REGISTRIES: Set<string> = new Set(['erc8004', 'olas', 'virtuals'])
@@ -297,6 +297,41 @@ export class RNWYClient {
       id: String(agentId),
       chain: validChain,
     })
+  }
+
+  /**
+   * Get full operator footprint for any wallet address.
+   * Returns all agents owned, trust scores, sybil signals,
+   * wallet intelligence, and MCP servers associated with that operator.
+   *
+   * @example
+   * const entity = await rnwy.getEntity('0xf653068677a9a26d5911da8abd1500d043ec807e')
+   * console.log(entity.agents)        // all agents owned by this wallet
+   * console.log(entity.wallet_score)  // dual signal/risk scores
+   * console.log(entity.mcp_servers)   // MCP servers linked to this operator
+   */
+  async getEntity(wallet: string): Promise<any> {
+    const validAddress = this.validateAddress(wallet)
+    return this.request<any>('/api/entity', { wallet: validAddress })
+  }
+
+  /**
+   * Get an ES256-signed attestation for any MCP server.
+   * Returns risk score, threat findings, and a signed envelope
+   * verifiable against the JWKS endpoint using kid rnwy-mcp-v1.
+   *
+   * @example
+   * const att = await rnwy.getMCPAttestation('vujasinovic/keycloak-source-mcp')
+   * console.log(att.mcp_risk_score)   // 0–100 threat score
+   * console.log(att.findings)         // rule violations detected
+   * console.log(att.attestation.sig)  // ES256 signature
+   * console.log(att.attestation.kid)  // "rnwy-mcp-v1"
+   */
+  async getMCPAttestation(canonicalId: string): Promise<any> {
+    if (!canonicalId || typeof canonicalId !== 'string') {
+      throw new RNWYValidationError('canonicalId must be a non-empty string')
+    }
+    return this.request<any>('/api/mcp-attestation', { canonical_id: canonicalId })
   }
 
   /**
