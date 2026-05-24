@@ -1,5 +1,6 @@
 // RNWY SDK — TypeScript Types
 // Derived from live API responses on March 22, 2026
+// Updated May 24, 2026: added jws (compact JWS) to Attestation, corrected AttestationSigned fields
 
 // ─── Chain & Registry ───────────────────────────────────────────────
 
@@ -282,12 +283,15 @@ export interface AttestationSigned {
   agentId: number
   chain: string
   registry: string
+  owner: string
   score: number
   tier: string
   badges: string[]
-  sybilSeverity: string
+  sybilSeverity: string | null
   sybilSignals: string[]
-  attestedAt: string
+  issuedAt: string
+  verifiedAt: string
+  expiry: string
 }
 
 export interface Attestation {
@@ -298,6 +302,8 @@ export interface Attestation {
   jwks: string
   signed: AttestationSigned
   sig: string
+  /** JWS Compact Serialization (RFC 7515). Verifiable with any standard JOSE library against the JWKS endpoint. */
+  jws?: string
   expiry: string
 }
 
@@ -315,13 +321,14 @@ export interface TrustCheckResponse {
   }
   reason: string
   owner: string
-  isOriginalOwner: boolean
+  isOriginalOwner: boolean | null
   feedbackCount: number
-  ageDays: number
-  checkedAt: string
-  sybilSeverity: string
+  ageDays: number | null
+  issuedAt: string
+  verifiedAt: string
+  sybilSeverity: string | null
   sybilSignals: string[]
-  attestation: Attestation
+  attestation: Attestation | null
 }
 
 // ─── Reviewer Profile ───────────────────────────────────────────────
